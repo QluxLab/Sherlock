@@ -1,57 +1,99 @@
 services:
+  # --- Tor Service ---
   tor:
-    image: ghcr.io/qluxlab/tor:latest
+    image: ghcr.io/qluxlab/sherlock:latest
     container_name: tor
+    networks:
+      - main
+    ports:
+      - "9050:9050" 
     volumes:
-      - ./config:/etc/tor
       - data:/var/lib/tor
-    ports:
-      - "9050:9050"
-    networks:
-      - main
+      - ./config:/etc/tor:ro
+    restart: on-failure:3
+    # Standard healthcheck
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --socks5-hostname tor:9050 'https://check.torproject.org/api/ip' | grep -q '\"IsTor\":true'"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 90s # Give it time to boot
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 256M 
+        reservations:
+          cpus: 0.1
+          memory: 128M
+
+  # --- SearXNG Service ---
   searxng:
+    image: searxng/searxng:latest
     container_name: searxng
-    image: docker.io/searxng/searxng:latest
-    restart: unless-stopped
+    depends_on:
+      tor:
+        condition: service_healthy
+    environment:
+      - BIND_ADDRESS=0.0.0.0:8080
+      - SEARXNG_BASE_URL=http://localhost:8888/
     networks:
       - main
     ports:
-      - "127.0.0.1:8888:8080"
+      - "8888:8080"
     volumes:
-      - ./searxng:/etc/searxng:rw
-      - searxng-data:/var/cache/searxng:rw
-    environment:
-      - SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost}/
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1m"
-        max-file: "1"
+      - ./searxng/:/etc/searxng/:ro
+    restart: on-failure:3
+    deploy:
+      resources:
+        limits:
+          cpus: 2
+          memory: 500M
+        reservations:
+          cpus: 0.5
+          memory: 100M
+
+  # --- Open WebUI Service ---
   open-webui:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: ghcr.io/open-webui/open-webui:latest
     container_name: open-webui
     depends_on:
       - searxng
     environment:
-      - ENABLE_OLLAMA_API=${ENABLE_OLLAMA_API:-false}
-      - ENABLE_OPENAI_API=${ENABLE_OPENAI_API:-true}
+      - ENABLE_OLLAMA_API=${ENABLE_OLLAMA_API}
+      - ENABLE_OPENAI_API=${ENABLE_OPENAI_API}
       - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL}
-      - ENABLE_WEB_SEARCH=${ENABLE_WEB_SEARCH:-true}
-      - WEB_SEARCH_TRUST_ENV=${WEB_SEARCH_TRUST_ENV:-true}
-      - WEB_SEARCH_ENGINE=${WEB_SEARCH_ENGINE:-searxng}
+      - ENABLE_WEB_SEARCH=${ENABLE_WEB_SEARCH}
+      - WEB_SEARCH_TRUST_ENV=${WEB_SEARCH_TRUST_ENV}
+      - WEB_SEARCH_ENGINE=${WEB_SEARCH_ENGINE}
       - SEARXNG_QUERY_URL=${SEARXNG_QUERY_URL}
     ports:
-      - "${OPEN_WEBUI_PORT-3000}:8080"
-    restart: unless-stopped
+      - "3000:8080"
     volumes:
       - open-webui:/app/backend/data
+    networks:
+      - main
+    restart: on-failure:3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: 2
+          memory: 1G
+        reservations:
+          cpus: 1
+          memory: 500M
+
+# --- Named Volumes ---
 volumes:
   data:
-  searxng-data:
   open-webui:
+
+# --- Networks ---
 networks:
   main:
     driver: bridge
