@@ -1,0 +1,57 @@
+services:
+  tor:
+    image: ghcr.io/qluxlab/tor:latest
+    container_name: tor
+    volumes:
+      - ./config:/etc/tor
+      - data:/var/lib/tor
+    ports:
+      - "9050:9050"
+    networks:
+      - main
+  searxng:
+    container_name: searxng
+    image: docker.io/searxng/searxng:latest
+    restart: unless-stopped
+    networks:
+      - main
+    ports:
+      - "127.0.0.1:8888:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+      - searxng-data:/var/cache/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost}/
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+  open-webui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: open-webui
+    depends_on:
+      - searxng
+    environment:
+      - ENABLE_OLLAMA_API=${ENABLE_OLLAMA_API:-false}
+      - ENABLE_OPENAI_API=${ENABLE_OPENAI_API:-true}
+      - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL}
+      - ENABLE_WEB_SEARCH=${ENABLE_WEB_SEARCH:-true}
+      - WEB_SEARCH_TRUST_ENV=${WEB_SEARCH_TRUST_ENV:-true}
+      - WEB_SEARCH_ENGINE=${WEB_SEARCH_ENGINE:-searxng}
+      - SEARXNG_QUERY_URL=${SEARXNG_QUERY_URL}
+    ports:
+      - "${OPEN_WEBUI_PORT-3000}:8080"
+    restart: unless-stopped
+    volumes:
+      - open-webui:/app/backend/data
+volumes:
+  data:
+  searxng-data:
+  open-webui:
+networks:
+  main:
+    driver: bridge

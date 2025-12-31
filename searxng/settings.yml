@@ -1,0 +1,51 @@
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "SearXNG-Tor"
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  image_proxy: true 
+  public_instance: false
+  limiter: false
+  secret_key: "5d63e1100cc9af3ecd17a8f82d2a692f67fb493a230a693cf669bf85048bf622"
+  allowed_hosts:
+    - "*"
+  output:
+    - json
+    - html
+
+outgoing:
+  proxies:
+    all://: socks5h://tor:9050
+  request_timeout: 60.0
+  max_request_timeout: 120.0
+  using_tor_proxy: true
+
+plugins:
+  searx.plugins.tor_check.SXNGPlugin:
+    active: false
+
+search:
+  safe_search: 2
+  # CRITICAL FIX 2: Explicitly allow these formats in the search config
+  formats:
+    - html
+    - json
+  engines:
+    - name: brave
+      disabled: true
+    - name: google
+      disabled: true
+    - name: bing
+      disabled: true
+    - name: qwant
+      disabled: true
+    - name: duckduckgo
+      disabled: true
+    - name: ahmia
+      disabled: false
+    - name: wikipedia
+      disabled: false

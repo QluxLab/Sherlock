@@ -1,0 +1,16 @@
+.git
+.gitignore
+*.md
+README*
+LICENSE
+
+.idea
+.vscode
+*.swp
+*.swo
+
+Dockerfile*
+docker-compose*
+.dockerignore
+
+.github

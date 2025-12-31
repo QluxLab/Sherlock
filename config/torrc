@@ -1,0 +1,20 @@
+SocksPort 0.0.0.0:9050
+SocksPolicy accept 10.0.0.0/8
+SocksPolicy accept 172.16.0.0/12
+SocksPolicy accept 192.168.0.0/16
+SocksPolicy reject *
+HTTPTunnelPort 0.0.0.0:9080
+
+DataDirectory /var/lib/tor
+
+Log notice stdout
+
+DisableDebuggerAttachment 1
+
+ConnectionPadding auto
+ReducedConnectionPadding 0
+
+MaxCircuitDirtiness 60
+NewCircuitPeriod 15
+
+RunAsDaemon 0
