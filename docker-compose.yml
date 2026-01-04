@@ -1,7 +1,7 @@
 services:
   # --- Tor Service ---
   tor:
-    image: ghcr.io/qluxlab/sherlock:latest
+    image: ghcr.io/qluxlab/tor:latest
     container_name: tor
     networks:
       - main
